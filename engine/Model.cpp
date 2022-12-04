@@ -6,7 +6,6 @@
 #include <filesystem>
 #include <utility>
 
-
 namespace cg3d
 {
 
@@ -76,6 +75,28 @@ void Model::SetMeshList(std::vector<std::shared_ptr<Mesh>> _meshList)
     viewerDataListPerMesh.clear();
     for (auto& mesh: meshList)
         viewerDataListPerMesh.emplace_back(CreateViewerData(mesh));
+}
+
+void Model::Simplify(bool use_igl_collapse_edge)
+{
+    bool something_collapsed = false;
+    auto mesh_list = this->GetMeshList();
+    int local_max_mesh_data_size = 0;
+    for (int index = 0; index < meshList.size(); index++)
+    {
+        std::shared_ptr<Mesh> mesh = this->GetMesh(index);
+        int currentDataIndex = mesh->data.size() - 1;
+        auto& extended_data = mesh->extended_data[currentDataIndex];
+        int number_of_faces_to_delete = 2 * std::ceil(0.1 * extended_data.edges_count);
+        something_collapsed = mesh->Simplify(number_of_faces_to_delete, use_igl_collapse_edge);
+        local_max_mesh_data_size = std::max(local_max_mesh_data_size, (int)mesh->data.size() - 1);
+    }
+    this->max_mesh_data_size = local_max_mesh_data_size;
+    this->SetMeshList(mesh_list);
+    if (something_collapsed)
+    {
+        this->meshIndex++;
+    }
 }
 
 } // namespace cg3d

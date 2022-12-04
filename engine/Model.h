@@ -33,6 +33,7 @@ public:
     ~Model() override = default;
 
     void Accept(Visitor* visitor) override { visitor->Visit(this); };
+    void Simplify(bool use_igl_collapse_edge);
 
     std::shared_ptr<Material> material;
     bool isHidden = false;
@@ -41,6 +42,7 @@ public:
     bool showWireframe = false;
     Eigen::Vector4f wireframeColor{0, 0, 0, 0};
     int meshIndex = 0;
+    int max_mesh_data_size;
 
     inline std::shared_ptr<Mesh> GetMesh(int index = 0) const { return meshList[index]; }
     inline std::vector<std::shared_ptr<Mesh>> GetMeshList() const { return meshList; }

@@ -2,12 +2,139 @@
 #include <utility>
 #include "ObjLoader.h"
 
-
 namespace cg3d
 {
 
 Mesh::Mesh(std::string name, Eigen::MatrixXd vertices, Eigen::MatrixXi faces, Eigen::MatrixXd vertexNormals, Eigen::MatrixXd textureCoords)
-        : name(std::move(name)), data{{vertices, faces, vertexNormals, textureCoords}} {}
+    : name(std::move(name)), data{ {vertices, faces, vertexNormals, textureCoords} }, extended_data{ extract_mesh_extended_data_improved(vertices, faces) } { }
+
+bool Mesh::Simplify(int number_of_faces_to_delete, bool use_igl_collapse_edge) 
+{
+    int currentDataIndex = this->data.size() - 1;
+    auto& extended_data = this->extended_data[currentDataIndex];
+    bool something_collapsed = false;
+    int num_of_collapses = 0;
+
+    for (int i = 0; i < number_of_faces_to_delete; i++) {
+        if (use_igl_collapse_edge)
+        {
+            if (!igl::collapse_edge(igl::shortest_edge_and_midpoint, extended_data.V, extended_data.F, extended_data.E, extended_data.EMAP, extended_data.EF, extended_data.EI, extended_data.Q, extended_data.EQ, extended_data.C))
+            {
+                break;
+            }
+        }
+        else
+        {
+            if (!collapse_edge_improved(extended_data.V, extended_data.F, extended_data.E, extended_data.EMAP, extended_data.EF, extended_data.EI, extended_data.Q, extended_data.C, extended_data.VQ, extended_data.EC))
+            {
+                break;
+            }
+        }
+        num_of_collapses += 3;
+        something_collapsed = true;
+    }
+
+    if (something_collapsed) {
+        Eigen::MatrixXd VN;
+        igl::per_vertex_normals(extended_data.V, extended_data.F, VN);
+        Eigen::MatrixXd TC = Eigen::MatrixXd::Zero(extended_data.V.rows(), 2);
+        this->data.push_back(MeshData{ extended_data.V, extended_data.F, VN, TC });
+        this->extended_data.push_back(MeshExtendedData{ extended_data.V, extended_data.F, extended_data.E, extended_data.EF, extended_data.EI, extended_data.C, extended_data.EQ, extended_data.EMAP, extended_data.Q, extended_data.edges_count - num_of_collapses, extended_data.VQ, extended_data.EC });
+    }
+
+    return something_collapsed;
+}
+
+std::vector<MeshExtendedData> Mesh::extract_mesh_extended_data_from_mesh_data(std::vector<MeshData> data)
+{
+    std::vector<MeshExtendedData> extracted_extended_data;
+
+    for (int i = 0; i < data.size(); i++)
+    {
+        extracted_extended_data.push_back(extract_mesh_extended_data(data[i].vertices, data[i].faces));
+    }
+    return extracted_extended_data;
+}
+
+std::vector<MeshExtendedData> Mesh::extract_mesh_extended_data_from_mesh_data_improved(std::vector<MeshData> data)
+{
+    std::vector<MeshExtendedData> extracted_extended_data;
+
+    for (int i = 0; i < data.size(); i++)
+    {
+        extracted_extended_data.push_back(extract_mesh_extended_data_improved(data[i].vertices, data[i].faces));
+    }
+    return extracted_extended_data;
+}
+
+MeshExtendedData Mesh::extract_mesh_extended_data(Eigen::MatrixXd vertices, Eigen::MatrixXi faces)
+{
+    Eigen::MatrixXd V = Eigen::MatrixXd(vertices);
+    Eigen::MatrixXi F = Eigen::MatrixXi(faces);
+    Eigen::MatrixXi E, EF, EI;
+    Eigen::MatrixXd C;
+    Eigen::VectorXi EQ, EMAP;
+    igl::min_heap< std::tuple<double, int, int> > Q;
+    igl::edge_flaps(faces, E, EMAP, EF, EI);
+    Q = {};
+    C.resize(E.rows(), vertices.cols());
+    Eigen::VectorXd costs(E.rows());
+
+    std::vector <Eigen::Matrix4d> VQ;
+    VQ.resize(V.rows());
+    
+    std::vector<double> EC;
+    EC.resize(E.rows());
+
+    for (int e = 0; e < E.rows(); e++)
+    {
+        double cost = e;
+        Eigen::RowVectorXd p(1, 3);
+        igl::shortest_edge_and_midpoint(e, vertices, faces, E, EMAP, EF, EI, cost, p);
+        C.row(e) = p;
+        costs(e) = cost;
+    }
+
+    for (int e = 0; e < E.rows(); e++)
+    {
+        Q.emplace(costs(e), e, 0);
+    }
+    EQ = Eigen::VectorXi::Zero(E.rows());
+    int edges_count = E.rows();
+    return MeshExtendedData{ V, F, E, EF, EI, C, EQ, EMAP, Q, edges_count, VQ, EC };
+}
+
+MeshExtendedData Mesh::extract_mesh_extended_data_improved(Eigen::MatrixXd vertices, Eigen::MatrixXi faces)
+{
+    Eigen::MatrixXd V = Eigen::MatrixXd(vertices);
+    Eigen::MatrixXi F = Eigen::MatrixXi(faces);
+    Eigen::MatrixXi E, EF, EI;
+    Eigen::MatrixXd C;
+    Eigen::VectorXi EQ, EMAP;
+    igl::min_heap< std::tuple<double, int, int> > Q;
+    igl::edge_flaps(faces, E, EMAP, EF, EI);
+    Q = {};
+    C.resize(E.rows(), vertices.cols());
+    Eigen::VectorXd costs(E.rows());
+
+    std::vector <Eigen::Matrix4d> VQ;
+    VQ.resize(V.rows());
+
+    std::vector<double> EC;
+    EC.resize(E.rows());
+
+    per_vertex_q_computation(V, F, VQ);
+
+    for (int e = 0; e < E.rows(); e++)
+    {
+        edge_cost_computation(e, vertices, E, C, Q, VQ, EC);
+    }
+
+    EQ = Eigen::VectorXi::Zero(E.rows());
+    int edges_count = E.rows();
+
+    return MeshExtendedData{ V, F, E, EF, EI, C, EQ, EMAP, Q, edges_count, VQ, EC };
+}
 
 const std::shared_ptr<Mesh>& Mesh::Plane()
 {

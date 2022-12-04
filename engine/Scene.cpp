@@ -114,10 +114,12 @@ void Scene::KeyCallback(Viewport* viewport, int x, int y, int key, int scancode,
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
                 break;
             case GLFW_KEY_UP:
-                camera->RotateInSystem(system, 0.1f, Axis::X);
+                if (pickedModel->meshIndex < pickedModel->max_mesh_data_size)
+                    pickedModel->meshIndex++;
                 break;
             case GLFW_KEY_DOWN:
-                camera->RotateInSystem(system, -0.1f, Axis::X);
+                if (pickedModel->meshIndex > 0)
+                    pickedModel->meshIndex--;
                 break;
             case GLFW_KEY_LEFT:
                 camera->RotateInSystem(system, 0.1f, Axis::Y);
@@ -142,6 +144,9 @@ void Scene::KeyCallback(Viewport* viewport, int x, int y, int key, int scancode,
                 break;
             case GLFW_KEY_F:
                 camera->TranslateInSystem(system, {0, 0, -0.05f});
+                break;
+            case GLFW_KEY_SPACE:
+                pickedModel->Simplify(false);
                 break;
         }
     }
