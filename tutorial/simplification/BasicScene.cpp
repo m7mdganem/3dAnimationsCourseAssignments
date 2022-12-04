@@ -29,22 +29,23 @@ void BasicScene::Init(float fov, int width, int height, float near, float far)
     //    SetNamedObject(cube, Model::Create, Mesh::Cube(), material, shared_from_this());
     material->AddTexture(0, "textures/box0.bmp", 2);
 
-    auto sphereMesh{ IglLoader::MeshFromFiles("sphere_igl", "data/sphere.obj") };
-    auto cylMesh{ IglLoader::MeshFromFiles("cyl_igl","data/arm.obj") };
-    auto cubeMesh{ IglLoader::MeshFromFiles("cube_igl","data/cube.off") };
+    auto sphereMesh{ IglLoader::MeshFromFiles("sphere_igl", "data/bunny.off") };
+    auto cylMesh{ IglLoader::MeshFromFiles("cyl_igl","data/fertility.off") };
+    auto cubeMesh{ IglLoader::MeshFromFiles("cube_igl","data/cheburashka.off") };
 
     sphere1 = Model::Create("sphere", sphereMesh, material);
     cyl = Model::Create("cyl", cylMesh, material);
     cube = Model::Create("cube", cubeMesh, material);
 
-    sphere1->Scale(2);
+    sphere1->Scale(15.0f);
     sphere1->showWireframe = true;
     sphere1->Translate({ -3,0,0 });
 
-    cyl->Translate({ 3,0,0 });
-    cyl->Scale(3.0f);
+    cyl->Translate({ 3,-1,0 });
+    cyl->Scale(0.05f);
     cyl->showWireframe = true;
 
+    cube->Scale(10.0f);
     cube->showWireframe = true;
 
     camera->Translate(20, Axis::Z);
@@ -81,6 +82,4 @@ void BasicScene::Update(const Program& program, const Eigen::Matrix4f& proj, con
     Scene::Update(program, proj, view, model);
     program.SetUniform4f("lightColor", 1.0f, 1.0f, 1.0f, 0.5f);
     program.SetUniform4f("Kai", 1.0f, 1.0f, 1.0f, 1.0f);
-    cube->Rotate(0.01f, Axis::X);
-    cyl->Rotate(0.01f, Axis::X);
 }

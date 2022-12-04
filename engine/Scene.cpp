@@ -146,7 +146,8 @@ void Scene::KeyCallback(Viewport* viewport, int x, int y, int key, int scancode,
                 camera->TranslateInSystem(system, {0, 0, -0.05f});
                 break;
             case GLFW_KEY_SPACE:
-                pickedModel->Simplify(false);
+                if (pickedModel)
+                    pickedModel->Simplify(false);
                 break;
         }
     }

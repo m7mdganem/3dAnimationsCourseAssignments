@@ -92,10 +92,10 @@ void Model::Simplify(bool use_igl_collapse_edge)
         local_max_mesh_data_size = std::max(local_max_mesh_data_size, (int)mesh->data.size() - 1);
     }
     this->max_mesh_data_size = local_max_mesh_data_size;
-    this->SetMeshList(mesh_list);
     if (something_collapsed)
     {
-        this->meshIndex++;
+        this->SetMeshList(mesh_list);
+        this->meshIndex = local_max_mesh_data_size;
     }
 }
 
