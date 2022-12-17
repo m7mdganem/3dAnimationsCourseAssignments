@@ -31,7 +31,10 @@ void Scene::Update(const Program& program, const Eigen::Matrix4f& proj, const Ei
 void Scene::MouseCallback(Viewport* viewport, int x, int y, int button, int action, int mods, int buttonState[])
 {
     // note: there's a (small) chance the button state here precedes the mouse press/release event
-
+    if ((pickedModel != nullptr) && (pickedModel->name == "big_box1"))
+        pickedModel = final_obj1;
+    if ((pickedModel != nullptr) && (pickedModel->name == "big_box2"))
+        pickedModel = final_obj2;
     if (action == GLFW_PRESS) { // default mouse button press behavior
         PickVisitor visitor;
         visitor.Init();
@@ -62,6 +65,10 @@ void Scene::MouseCallback(Viewport* viewport, int x, int y, int button, int acti
 
 void Scene::ScrollCallback(Viewport* viewport, int x, int y, int xoffset, int yoffset, bool dragging, int buttonState[])
 {
+    if ((pickedModel != nullptr) && (pickedModel->name == "big_box1"))
+        pickedModel = final_obj1;
+    if ((pickedModel != nullptr) && (pickedModel->name == "big_box2"))
+        pickedModel = final_obj2;
     // note: there's a (small) chance the button state here precedes the mouse press/release event
     auto system = camera->GetRotation().transpose();
     if (pickedModel) {
@@ -75,6 +82,10 @@ void Scene::ScrollCallback(Viewport* viewport, int x, int y, int xoffset, int yo
 
 void Scene::CursorPosCallback(Viewport* viewport, int x, int y, bool dragging, int* buttonState)
 {
+    if ((pickedModel != nullptr) && (pickedModel->name == "big_box1"))
+        pickedModel = final_obj1;
+    if ((pickedModel != nullptr) && (pickedModel->name == "big_box2"))
+        pickedModel = final_obj2;
     if (dragging) {
         auto system = camera->GetRotation().transpose();
         auto moveCoeff = camera->CalcMoveCoeff(pickedModelDepth, viewport->width);
@@ -110,22 +121,36 @@ void Scene::KeyCallback(Viewport* viewport, int x, int y, int key, int scancode,
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         switch (key) // NOLINT(hicpp-multiway-paths-covered)
         {
-            case GLFW_KEY_ESCAPE:
-                glfwSetWindowShouldClose(window, GLFW_TRUE);
-                break;
             case GLFW_KEY_UP:
-                if (pickedModel->meshIndex < pickedModel->max_mesh_data_size)
-                    pickedModel->meshIndex++;
+                detect = true;
+                velocity_x = 0;
+                velocity_y = 0.001;
+                final_obj1->RemoveChild(Small_box_obj2);
+                final_obj2->RemoveChild(Small_box_obj1);
                 break;
             case GLFW_KEY_DOWN:
-                if (pickedModel->meshIndex > 0)
-                    pickedModel->meshIndex--;
-                break;
-            case GLFW_KEY_LEFT:
-                camera->RotateInSystem(system, 0.1f, Axis::Y);
+                detect = true;
+                final_obj1->RemoveChild(Small_box_obj2);
+                final_obj2->RemoveChild(Small_box_obj1);
+                velocity_x = 0;
+                velocity_y = -0.001;
                 break;
             case GLFW_KEY_RIGHT:
-                camera->RotateInSystem(system, -0.1f, Axis::Y);
+                detect = true;
+                velocity_x = 0.001;
+                velocity_y = 0;
+                final_obj1->RemoveChild(Small_box_obj2);
+                final_obj2->RemoveChild(Small_box_obj1);
+                break;
+            case GLFW_KEY_LEFT:
+                detect = true;
+                final_obj1->RemoveChild(Small_box_obj2);
+                final_obj2->RemoveChild(Small_box_obj1);
+                velocity_x = -0.001;
+                velocity_y = 0;
+                break;
+            case GLFW_KEY_ESCAPE:
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
                 break;
             case GLFW_KEY_W:
                 camera->TranslateInSystem(system, {0, 0.05f, 0});
@@ -145,10 +170,14 @@ void Scene::KeyCallback(Viewport* viewport, int x, int y, int key, int scancode,
             case GLFW_KEY_F:
                 camera->TranslateInSystem(system, {0, 0, -0.05f});
                 break;
-            case GLFW_KEY_SPACE:
-                if (pickedModel)
-                    pickedModel->Simplify(false);
+            case GLFW_KEY_0:
+                final_obj1->RemoveChild(Small_box_obj2);
+                final_obj2->RemoveChild(Small_box_obj1);
+                velocity_x = 0;
+                velocity_y = 0;
                 break;
+
+            
         }
     }
 }
